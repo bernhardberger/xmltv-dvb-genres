@@ -1,0 +1,39 @@
+#!/bin/sh
+# Example Tvheadend grabber wrapper that adds DVB genre codes.
+#
+# Install it on Tvheadend's PATH under a tv_grab_* name, for example
+# /usr/local/bin/tv_grab_mysource, and point REAL at the actual grabber
+# (installed outside PATH or under another name). Tvheadend then runs this
+# wrapper as the grabber.
+#
+# FILTER_ARGS passes options to the filter, for example
+# FILTER_ARGS="-format name" for Tvheadend builds without the Category Code
+# XPath setting.
+#
+# The guide is never lost: without xmltv-dvb-genres, or if it fails, the
+# grabber output is passed through.
+
+REAL=${REAL:-/usr/local/libexec/tv_grab_mysource}
+FILTER=${FILTER:-xmltv-dvb-genres}
+FILTER_ARGS=${FILTER_ARGS:-}
+
+case "$1" in
+--description | --capabilities | --version | --configure)
+	exec "$REAL" "$@"
+	;;
+esac
+
+if ! command -v "$FILTER" >/dev/null 2>&1; then
+	exec "$REAL" "$@"
+fi
+
+tmp=$(mktemp) || exec "$REAL" "$@"
+trap 'rm -f "$tmp"' EXIT
+
+# Keep the grabber's own exit status: a failed grab must stay failed.
+"$REAL" "$@" >"$tmp" || exit $?
+
+# xmltv-dvb-genres always writes the guide, even when it reports an error.
+# FILTER_ARGS is split on spaces on purpose.
+# shellcheck disable=SC2086
+"$FILTER" $FILTER_ARGS "$tmp" || true
