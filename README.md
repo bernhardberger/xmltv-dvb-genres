@@ -12,38 +12,58 @@ guide, Tvheadend matched categories on 801 of 3,000 sampled programmes.
 code per programme from a rule table for the guide's vocabulary and writes it
 in one of two formats.
 
-By default (`-format eit`) it adds the code to every category as `eit="0xNN"`,
-which is how Tvheadend's documentation expects codes to be supplied:
-
-```xml
-<category lang="en" eit="0x43">Soccer</category>
-```
-
-With `-format name` it replaces the programme's categories with a single
-category holding Tvheadend's own name for the code, which every Tvheadend
-version matches without any setting:
+By default (`-format name`) it replaces the programme's categories with a
+single category holding Tvheadend's own name for the code. Every Tvheadend
+version matches that name without any setting:
 
 ```xml
 <category lang="en">Football / Soccer</category>
 ```
 
+With `-format eit` it keeps the categories and adds the code to each of them
+as `eit="0xNN"`, which Tvheadend reads through its Category Code XPath
+setting:
+
+```xml
+<category eit="0x43" lang="en">Soccer</category>
+```
+
+That setting needs a recent Tvheadend build, and until two fixes are merged
+upstream it can crash Tvheadend. Read [Choosing a format](#choosing-a-format)
+before you use `eit`.
+
 Nothing else in the document changes. Output is byte-identical to the input
 apart from the inserted attributes or replaced categories.
 
+This first release ships one table, for the Schedules Direct vocabulary.
+Guides from other sources use other terms and need their own table. New
+tables are welcome; see [Tables](#tables).
+
 ## Install
+
+The [releases page](https://github.com/bernhardberger/xmltv-dvb-genres/releases)
+has binaries for Linux on amd64, arm64 and armv7. Each is a single static
+binary with no runtime dependencies. Install it wherever the grabber runs, for
+example on a Raspberry Pi:
+
+```sh
+base=https://github.com/bernhardberger/xmltv-dvb-genres/releases/latest/download
+curl -LO "$base/xmltv-dvb-genres-linux-arm64" -LO "$base/SHA256SUMS"
+sha256sum --check --ignore-missing SHA256SUMS
+sudo install -m 755 xmltv-dvb-genres-linux-arm64 /usr/local/bin/xmltv-dvb-genres
+```
+
+With Go 1.22 or later you can build it yourself:
 
 ```sh
 go install github.com/bernhardberger/xmltv-dvb-genres/cmd/xmltv-dvb-genres@latest
 ```
 
-The result is a single static binary with no runtime dependencies. Copy it to
-wherever the grabber runs.
-
 ## Use
 
 ```sh
 tv_grab_something --days 7 | xmltv-dvb-genres > guide.xml
-tv_grab_something --days 7 | xmltv-dvb-genres -format name > guide.xml
+tv_grab_something --days 7 | xmltv-dvb-genres -format eit > guide.xml   # patched Tvheadend only, see below
 xmltv-dvb-genres -report guide-in.xml > guide.xml   # statistics and unmapped terms on stderr
 xmltv-dvb-genres -check ./mine.json guide.xml       # lint a table, optionally against a real guide
 xmltv-dvb-genres -list-tables
@@ -52,7 +72,7 @@ xmltv-dvb-genres -list-codes
 
 | Flag | Meaning |
 | --- | --- |
-| `-format eit\|name` | How to write the code: `eit` attributes (default) or one Tvheadend genre name. See [Choosing a format](#choosing-a-format). |
+| `-format name\|eit` | How to write the code: one Tvheadend genre name (default) or `eit` attributes. See [Choosing a format](#choosing-a-format). |
 | `-table name\|file.json` | Rule table to use. Repeat to chain tables; the first table with a matching rule wins. Default `schedulesdirect-en`. |
 | `-report` | Print per-code counts and the category terms of unmapped programmes to stderr. |
 | `-check table [guide.xml]` | Lint a table and exit (see below). |
@@ -70,21 +90,45 @@ category is already a Tvheadend genre name.
 
 ### Choosing a format
 
-Both formats give Tvheadend the same genre for every mapped programme, except
-for the few codes without a Tvheadend name (see below).
+Use `name` unless your Tvheadend build has the two fixes listed below.
 
-`eit` keeps the original categories. With the grabber module's **Scrape
-credits and extra information** option on, Tvheadend stores their text as
-well, and its web UI shows and filters on it. It needs a Tvheadend build with
-the Category Code XPath setting. `eit` is also a Tvheadend convention, not part
-of the XMLTV DTD, so strict validators such as `tv_validate_file` will flag it.
-
-`name` works with any Tvheadend version and no setting, and the output stays
+With `name`, Tvheadend gets exactly the mapped genre for every mapped
+programme, except for the few codes without a Tvheadend name (see below).
+It works with any Tvheadend version and no setting, and the output stays
 valid XMLTV. The original category text is gone, though: "Crime drama",
 "Mystery" and "Series" all become "Detective / Thriller". Kodi does not
 notice, because it shows the genre code and only falls back to category text
 when there is none. Anything else that reads the same guide loses the source
 vocabulary too.
+
+`eit` keeps the original categories. With the grabber module's **Scrape
+credits and extra information** option on, Tvheadend stores their text as
+well, and its web UI shows and filters on it. `eit` is a Tvheadend convention,
+not part of the XMLTV DTD, so strict validators such as `tv_validate_file`
+will flag it. It needs the Category Code XPath setting, which has problems in
+upstream Tvheadend:
+
+- The setting reached Tvheadend master on 26 October 2025
+  ([#1962](https://github.com/tvheadend/tvheadend/pull/1962)). Tvheadend 4.2
+  and older 4.3 builds don't have it and ignore the attribute.
+- Without [#2345](https://github.com/tvheadend/tvheadend/pull/2345), Tvheadend
+  can crash when one XMLTV module has a Category Code XPath and another XMLTV
+  module without one imports a guide
+  ([#2344](https://github.com/tvheadend/tvheadend/issues/2344)). Clearing the
+  field doesn't help, because Tvheadend still parses the empty value. To
+  recover, stop Tvheadend, remove the `xpath_*` keys from its `epggrab/config`
+  file and start it again.
+- Without [#2363](https://github.com/tvheadend/tvheadend/pull/2363), Tvheadend
+  takes the code from a programme's first category only. On each further
+  category it finds the code already listed, treats that as an unusable code
+  and matches the category text instead. A later category whose text is a
+  Tvheadend genre name therefore adds a second genre, and Kodi shows whichever
+  code is lower. With the Schedules Direct guide this hit 7% of programmes,
+  mostly "Comedy" on cartoons and "Documentary" on nature and science
+  documentaries ([#2362](https://github.com/tvheadend/tvheadend/issues/2362)).
+
+In October 2026 both fixes were still open. Check their status before you
+switch to `eit`.
 
 Codes from `0xb0` up have no Tvheadend name. In `name` format, programmes
 mapped to them keep their categories, and `-report` counts them.
@@ -131,10 +175,10 @@ xmltv-dvb-genres guide.xml > guide-coded.xml
 
 #### Category Code XPath
 
-For `-format eit`, select the module that receives the guide and set
-**Category Code XPath** to `@eit`. The internal and external XMLTV modules
-both have this setting. Builds without it ignore the attribute; use
-`-format name` there. `-format name` needs no setting.
+`-format name` needs no setting. For `-format eit`, on a build with the fixes
+from [Choosing a format](#choosing-a-format), select the module that receives
+the guide and set **Category Code XPath** to `@eit`. The internal and external
+XMLTV modules both have this setting.
 
 Then run the grabber again. Clients such as Kodi show a genre for each mapped
 programme, in their own language.

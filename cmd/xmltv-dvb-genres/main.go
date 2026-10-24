@@ -1,12 +1,13 @@
 // Command xmltv-dvb-genres reads an XMLTV document and adds a DVB genre code
-// to every programme it can map. With -format eit (the default) it adds
-// eit="0xNN" to each category, for Tvheadend's "Category Code XPath" setting.
-// With -format name it replaces the categories with one Tvheadend genre name,
-// which any Tvheadend version recognises without a setting.
+// to every programme it can map. With -format name (the default) it replaces
+// the categories with one Tvheadend genre name, which any Tvheadend version
+// recognises without a setting. With -format eit it adds eit="0xNN" to each
+// category, for Tvheadend's "Category Code XPath" setting; see the README for
+// the Tvheadend builds that handle it safely.
 //
 // Usage:
 //
-//	tv_grab_something | xmltv-dvb-genres [-format eit|name] [-table name|file.json]... [-report] > guide.xml
+//	tv_grab_something | xmltv-dvb-genres [-format name|eit] [-table name|file.json]... [-report] > guide.xml
 //
 // The tool fails open: if the input is malformed, or the tables cannot be
 // loaded, the guide is still written to stdout (mapped up to the error or not
@@ -40,7 +41,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 	var tables tableList
 	fs.Var(&tables, "table", "rule table: embedded name or path to a .json file; repeat to chain, first match wins (default schedulesdirect-en)")
-	format := fs.String("format", "eit", "output format: eit (add eit attributes, keep categories) or name (replace categories with one Tvheadend genre name)")
+	format := fs.String("format", "name", "output format: name (replace categories with one Tvheadend genre name) or eit (add eit attributes, keep categories)")
 	report := fs.Bool("report", false, "print mapping statistics and unmapped category terms to stderr")
 	list := fs.Bool("list-tables", false, "list embedded tables and exit")
 	codes := fs.Bool("list-codes", false, "list the DVB genre codes and exit")

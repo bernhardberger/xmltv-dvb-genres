@@ -7,8 +7,8 @@
 # wrapper as the grabber.
 #
 # FILTER_ARGS passes options to the filter, for example
-# FILTER_ARGS="-format name" for Tvheadend builds without the Category Code
-# XPath setting.
+# FILTER_ARGS="-format eit" on a Tvheadend build that handles the Category
+# Code XPath safely (see "Choosing a format" in the README).
 #
 # The guide is never lost: without xmltv-dvb-genres, or if it fails, the
 # grabber output is passed through.

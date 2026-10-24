@@ -16,8 +16,9 @@ func TestRun(t *testing.T) {
 	if code := run([]string{"-report"}, strings.NewReader(guide), &out, &errOut); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
-	if !strings.Contains(out.String(), `<category eit="0x21" lang="en">News</category>`) {
-		t.Errorf("stdout: %s", out.String())
+	want := strings.Replace(guide, `<category lang="en">News</category><category lang="en">Odd</category>`, `<category lang="en">News / Weather report</category>`, 1)
+	if out.String() != want {
+		t.Errorf("default format is not name: %s", out.String())
 	}
 	for _, s := range []string{"programmes 2: mapped 1 (50.0%)", "0x21       1", "1  odd"} {
 		if !strings.Contains(errOut.String(), s) {
@@ -26,12 +27,12 @@ func TestRun(t *testing.T) {
 	}
 }
 
-func TestRunFormatName(t *testing.T) {
+func TestRunFormatEIT(t *testing.T) {
 	var out, errOut bytes.Buffer
-	if code := run([]string{"-format", "name"}, strings.NewReader(guide), &out, &errOut); code != 0 {
+	if code := run([]string{"-format", "eit"}, strings.NewReader(guide), &out, &errOut); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
-	want := strings.Replace(guide, `<category lang="en">News</category><category lang="en">Odd</category>`, `<category lang="en">News / Weather report</category>`, 1)
+	want := strings.Replace(guide, `<category lang="en">News</category><category lang="en">Odd</category>`, `<category eit="0x21" lang="en">News</category><category eit="0x21" lang="en">Odd</category>`, 1)
 	if out.String() != want {
 		t.Errorf("stdout: %s", out.String())
 	}
