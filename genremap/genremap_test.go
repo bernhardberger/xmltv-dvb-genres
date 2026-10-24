@@ -44,6 +44,10 @@ func TestSchedulesDirectMapping(t *testing.T) {
 		{[]string{"Football", "Series", "Sports event"}, 0x45},
 		{[]string{"Auto racing", "Classic Sport Event", "Motorsports", "Series", "Sports event"}, 0x47},
 		{[]string{"Sports talk", "Series"}, 0x42},
+		{[]string{"Sports event", "Track/field", "series"}, 0x46},
+		{[]string{"Figure skating", "Sports event", "series"}, 0x49},
+		{[]string{"Olympics", "Sports event", "Summer Olympics", "series"}, 0x41},
+		{[]string{"Olympics", "Skiing", "Sports event"}, 0x49},
 		{[]string{"Adventure", "Animated", "Children", "Comedy", "Series"}, 0x55},
 		{[]string{"Children", "Series"}, 0x50},
 		{[]string{"Animated", "Series", "Sitcom"}, 0x14},
@@ -62,6 +66,7 @@ func TestSchedulesDirectMapping(t *testing.T) {
 		{[]string{"Comedy", "Talk"}, 0x33},
 		{[]string{"Feature Film", "Comedy"}, 0x14},
 		{[]string{"Feature Film"}, 0x10},
+		{[]string{"Feature Film", "Musical comedy", "movie"}, 0x65},
 		{[]string{"Entertainment", "Series", "tvshow"}, 0x30},
 		{[]string{"Hip-Hop & Rap", "Music"}, 0x61},
 	}

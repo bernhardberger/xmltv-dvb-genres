@@ -60,8 +60,10 @@ Each specific sport maps to its DVB code before the generic tags are
 considered, so "Soccer, Sports event" is football (0x43), not sport in general
 (0x40). DVB has no code for cycling, golf, darts, snooker, table tennis,
 climbing or esports; they get 0x40. Professional wrestling is staged, but
-martial sports (0x4b) is still the closest code. "Multi-sport event" maps to
-special events (0x41) and "Sports talk" to sports magazines (0x42).
+martial sports (0x4b) is still the closest code. "Multi-sport event",
+"Olympics" and "Summer Olympics" map to special events (0x41), but only when
+no specific sport is tagged: "Olympics, Skiing" is winter sports (0x49).
+"Sports talk" maps to sports magazines (0x42).
 
 "Auto racing" is motor sport (0x47). "Auto" on its own marks car magazines and
 maps to motoring (0xa3) in the leisure group. "Boat racing" and "Boat" are
@@ -125,6 +127,11 @@ health magazines such as Bewusst gesund or Die Sprechstunde and maps to
 medicine (0x93) in the factual group. "Law" alone maps to social and political
 issues (0x80), but in practice almost every programme with "Law" matches an
 earlier rule.
+
+"Musical" and "Musical comedy" map to musical/opera (0x65) in the music group,
+so The Rocky Horror Picture Show ("Feature Film, Musical comedy") is a
+musical. A musical that also carries a fiction tag such as "Comedy" gets the
+fiction code.
 
 ### Fallbacks
 
