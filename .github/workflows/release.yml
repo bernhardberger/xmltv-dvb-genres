@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history and tags, so go build stamps the tag as the version.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache: false
+      - run: go vet ./...
+      - run: go test -count=1 ./...
+      - name: Build
+        env:
+          CGO_ENABLED: '0'
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -eu
+          # Build outside the checkout: files in it would mark later builds +dirty.
+          out=$RUNNER_TEMP/dist
+          mkdir "$out"
+          for target in amd64 arm64 armv7; do
+            case "$target" in
+            armv7) arch=arm arm=7 ;;
+            *) arch=$target arm= ;;
+            esac
+            GOOS=linux GOARCH=$arch GOARM=$arm go build -trimpath -ldflags='-s -w' \
+              -o "$out/xmltv-dvb-genres-linux-$target" ./cmd/xmltv-dvb-genres
+          done
+          for f in "$out"/xmltv-dvb-genres-linux-*; do
+            version=$(go version -m "$f" | awk '$1 == "mod" { print $3 }')
+            if [ "$version" != "$TAG" ]; then
+              echo "$f has version $version, want $TAG"
+              exit 1
+            fi
+          done
+          cd "$out"
+          sha256sum xmltv-dvb-genres-linux-* > SHA256SUMS
+          cat SHA256SUMS
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" "$RUNNER_TEMP"/dist/* --verify-tag --title "$TAG" --generate-notes
