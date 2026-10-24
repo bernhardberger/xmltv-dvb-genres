@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/bernhardberger/xmltv-dvb-genres/etsi"
@@ -43,7 +44,13 @@ type Stats struct {
 	// Terms counts every category in the guide (text normalized, lang lower
 	// case). Filled only when Options.CollectTerms is set.
 	Terms map[genremap.Category]int
+	// Examples holds up to MaxExamples distinct programme titles per
+	// normalized category text. Filled only when Options.CollectTerms is set.
+	Examples map[string][]string
 }
+
+// MaxExamples is the number of programme titles Stats.Examples keeps per term.
+const MaxExamples = 3
 
 // Format selects how a mapped programme's code is written.
 type Format int
@@ -88,6 +95,7 @@ func Rewrite(r io.Reader, w io.Writer, m *genremap.Mapper, opt Options) (Stats, 
 	}
 	if opt.CollectTerms {
 		st.Terms = map[genremap.Category]int{}
+		st.Examples = map[string][]string{}
 	}
 	bw := bufio.NewWriterSize(w, 1<<16)
 	rec := &recorder{r: r}
@@ -129,6 +137,8 @@ func rewrite(rec *recorder, w *bufio.Writer, m *genremap.Mapper, opt Options, st
 		cats      []*category
 		cur       *category
 		coded     bool
+		inTitle   bool
+		title     strings.Builder // the programme's first title, for Stats.Examples
 	)
 	write := func(b []byte) error {
 		if _, err := w.Write(b); err != nil {
@@ -156,6 +166,9 @@ func rewrite(rec *recorder, w *bufio.Writer, m *genremap.Mapper, opt Options, st
 					return err
 				}
 				inProg, progStart, cats, cur, coded = true, off, cats[:0], nil, false
+				title.Reset()
+			case t.Name.Local == "title" && inProg && opt.CollectTerms && cur == nil && title.Len() == 0:
+				inTitle = true
 			case t.Name.Local == "category" && inProg && cur == nil:
 				cur = &category{off: off}
 				for _, a := range t.Attr {
@@ -168,11 +181,16 @@ func rewrite(rec *recorder, w *bufio.Writer, m *genremap.Mapper, opt Options, st
 				}
 			}
 		case xml.CharData:
-			if cur != nil {
+			switch {
+			case cur != nil:
 				cur.text.Write(t)
+			case inTitle:
+				title.Write(t)
 			}
 		case xml.EndElement:
 			switch {
+			case t.Name.Local == "title" && inTitle:
+				inTitle = false
 			case t.Name.Local == "category" && cur != nil:
 				cur.end = d.InputOffset()
 				cats = append(cats, cur)
@@ -180,7 +198,7 @@ func rewrite(rec *recorder, w *bufio.Writer, m *genremap.Mapper, opt Options, st
 			case t.Name.Local == "programme" && inProg:
 				inProg = false
 				block := rec.take(d.InputOffset())
-				out, err := stamp(block, progStart, cats, coded, m, opt, st)
+				out, err := stamp(block, progStart, cats, coded, strings.TrimSpace(title.String()), m, opt, st)
 				if err != nil {
 					// The block has left the recorder; write it unchanged
 					// before failing open on the rest.
@@ -201,11 +219,15 @@ func rewrite(rec *recorder, w *bufio.Writer, m *genremap.Mapper, opt Options, st
 
 // stamp returns block (the raw bytes of one programme starting at offset
 // base) with the chosen code written in opt.Format.
-func stamp(block []byte, base int64, cats []*category, coded bool, m *genremap.Mapper, opt Options, st *Stats) ([]byte, error) {
+func stamp(block []byte, base int64, cats []*category, coded bool, title string, m *genremap.Mapper, opt Options, st *Stats) ([]byte, error) {
 	st.Programmes++
 	if opt.CollectTerms {
 		for _, c := range cats {
-			st.Terms[genremap.Category{Text: genremap.Normalize(c.text.String()), Lang: strings.ToLower(c.lang)}]++
+			text := genremap.Normalize(c.text.String())
+			st.Terms[genremap.Category{Text: text, Lang: strings.ToLower(c.lang)}]++
+			if ex := st.Examples[text]; title != "" && len(ex) < MaxExamples && !slices.Contains(ex, title) {
+				st.Examples[text] = append(ex, title)
+			}
 		}
 	}
 	switch {

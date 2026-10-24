@@ -54,6 +54,7 @@ func TestLintAgainstGuide(t *testing.T) {
 		{Text: "soccer", Lang: "en"}:  5,
 		{Text: "series", Lang: "en"}:  9,
 		{Text: "tennis", Lang: ""}:    2,
+		{Text: "polo", Lang: "en"}:    1,
 		{Text: "fußball", Lang: "de"}: 7, // other language: not this table's business
 	}
 	var lines []string
@@ -62,9 +63,12 @@ func TestLintAgainstGuide(t *testing.T) {
 			t.Errorf("unexpected %s", is)
 		}
 		lines = append(lines, is.String())
+		if want := strings.Contains(is.Msg, "guide term"); want != (is.Term != "") || want && is.Term != "tennis" && is.Term != "polo" {
+			t.Errorf("%s: Term %q", is, is.Term)
+		}
 	}
 	all := strings.Join(lines, "\n")
-	for _, w := range []string{`never occur in the guide (typo, or not in this guide): "socer"`, `guide term "tennis" (2 categories)`} {
+	for _, w := range []string{`never occur in the guide (typo, or not in this guide): "socer"`, `guide term "tennis" (2 categories)`, `guide term "polo" (1 category)`} {
 		if !strings.Contains(all, w) {
 			t.Errorf("missing %q in\n%s", w, all)
 		}

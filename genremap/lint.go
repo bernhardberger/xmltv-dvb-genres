@@ -29,6 +29,7 @@ type Issue struct {
 	Level Level
 	Rule  int
 	Msg   string
+	Term  string // the guide term an uncovered-term issue is about
 }
 
 func (i Issue) String() string {
@@ -45,7 +46,7 @@ func (i Issue) String() string {
 func Lint(t *Table, seen map[Category]int) []Issue {
 	var out []Issue
 	warn := func(rule int, format string, a ...any) {
-		out = append(out, Issue{Warning, rule, fmt.Sprintf(format, a...)})
+		out = append(out, Issue{Level: Warning, Rule: rule, Msg: fmt.Sprintf(format, a...)})
 	}
 
 	// catchAll[term] = first rule that fires whenever term is present.
@@ -129,7 +130,7 @@ func Lint(t *Table, seen map[Category]int) []Issue {
 	}
 	sort.Strings(missing)
 	if len(missing) > 0 {
-		out = append(out, Issue{Info, 0, fmt.Sprintf("%d rule terms never occur in the guide (typo, or not in this guide): %s",
+		out = append(out, Issue{Level: Info, Msg: fmt.Sprintf("%d rule terms never occur in the guide (typo, or not in this guide): %s",
 			len(missing), quoteJoin(missing))})
 	}
 	var uncovered []string
@@ -145,7 +146,11 @@ func Lint(t *Table, seen map[Category]int) []Issue {
 		return uncovered[i] < uncovered[j]
 	})
 	for _, term := range uncovered {
-		out = append(out, Issue{Info, 0, fmt.Sprintf("guide term %q (%d categories) is in no rule and not ignored", term, counts[term])})
+		noun := "categories"
+		if counts[term] == 1 {
+			noun = "category"
+		}
+		out = append(out, Issue{Level: Info, Msg: fmt.Sprintf("guide term %q (%d %s) is in no rule and not ignored", term, counts[term], noun), Term: term})
 	}
 	return out
 }

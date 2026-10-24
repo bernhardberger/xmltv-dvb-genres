@@ -142,7 +142,10 @@ func runCheck(ref, guide string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "%s: error: %v\n", ref, err)
 		return 1
 	}
-	var seen map[genremap.Category]int
+	var (
+		seen     map[genremap.Category]int
+		examples map[string][]string
+	)
 	if guide != "" {
 		f, err := os.Open(guide)
 		if err != nil {
@@ -155,7 +158,7 @@ func runCheck(ref, guide string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "xmltv-dvb-genres: %s: %v\n", guide, err)
 			return 1
 		}
-		seen = st.Terms
+		seen, examples = st.Terms, st.Examples
 		fmt.Fprintf(stdout, "%s: %d of %d programmes in %s mapped by this table alone\n", ref, st.Mapped, st.Programmes, guide)
 	}
 	issues := genremap.Lint(t, seen)
@@ -164,7 +167,15 @@ func runCheck(ref, guide string, stdout, stderr io.Writer) int {
 		if is.Level == genremap.Warning {
 			warnings++
 		}
-		fmt.Fprintf(stdout, "%s: %s\n", ref, is)
+		line := is.String()
+		if ex := examples[is.Term]; is.Term != "" && len(ex) > 0 {
+			q := make([]string, len(ex))
+			for i, title := range ex {
+				q[i] = fmt.Sprintf("%q", title)
+			}
+			line += ", e.g. " + strings.Join(q, ", ")
+		}
+		fmt.Fprintf(stdout, "%s: %s\n", ref, line)
 	}
 	fmt.Fprintf(stdout, "%s: %d rules, %d warnings\n", ref, len(t.Rules), warnings)
 	if warnings > 0 {

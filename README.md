@@ -198,8 +198,9 @@ valid but cannot work as written:
 - `ignore` terms that a rule also uses.
 
 Given a guide, it also lists rule terms that never occur in it (often typos)
-and guide terms that no rule or `ignore` entry covers. Warnings exit with 1;
-these guide findings are informational.
+and guide terms that no rule or `ignore` entry covers, with up to three
+programme titles for each. Warnings exit with 1; these guide findings are
+informational.
 
 ```console
 $ xmltv-dvb-genres -check ours.json

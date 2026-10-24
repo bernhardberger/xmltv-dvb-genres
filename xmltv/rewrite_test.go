@@ -251,3 +251,38 @@ func TestRewriteLargeInputStreams(t *testing.T) {
 		t.Errorf("mapped %d, out %d bytes", st.Mapped, out.Len())
 	}
 }
+
+func TestRewriteCollectsExamples(t *testing.T) {
+	var out bytes.Buffer
+	st, err := Rewrite(strings.NewReader(doc), &out, mapper(t), Options{CollectTerms: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.String() != want {
+		t.Errorf("collecting changed the output:\n%s", out.String())
+	}
+	for term, titles := range map[string][]string{
+		"series":      {"Bundesliga & mehr", "Nothing known"},
+		"mystery box": {"Nothing known"},
+		"news":        {"Already coded"},
+		"music":       nil, // programme without a title
+	} {
+		if got := st.Examples[term]; strings.Join(got, "|") != strings.Join(titles, "|") {
+			t.Errorf("%q: got %q, want %q", term, got, titles)
+		}
+	}
+
+	var b strings.Builder
+	b.WriteString("<tv>")
+	for _, title := range []string{"A", "A", "B", "C", "D"} {
+		b.WriteString(`<programme channel="a"><title>` + title + `</title><title lang="de">Other</title><category>Odd</category></programme>`)
+	}
+	b.WriteString("</tv>")
+	st, err = Rewrite(strings.NewReader(b.String()), io.Discard, mapper(t), Options{CollectTerms: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(st.Examples["odd"], "|"); got != "A|B|C" {
+		t.Errorf("examples: got %q, want first %d distinct first titles", got, MaxExamples)
+	}
+}

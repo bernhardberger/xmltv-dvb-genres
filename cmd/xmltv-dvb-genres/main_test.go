@@ -68,7 +68,8 @@ func TestRunCheck(t *testing.T) {
 		t.Fatal(err)
 	}
 	g := filepath.Join(dir, "guide.xml")
-	if err := os.WriteFile(g, []byte(guide), 0o644); err != nil {
+	titled := strings.Replace(guide, `<programme channel="a">`, `<programme channel="a"><title>Odd Show</title>`, 1)
+	if err := os.WriteFile(g, []byte(titled), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -80,7 +81,7 @@ func TestRunCheck(t *testing.T) {
 	if code := run([]string{"-check", bad, g}, nil, &out, &out); code != 1 {
 		t.Errorf("bad table: exit %d", code)
 	}
-	for _, s := range []string{`term "news" is shadowed by rule 1`, `guide term "odd" (2 categories)`, "1 of 2 programmes", "1 warnings"} {
+	for _, s := range []string{`term "news" is shadowed by rule 1`, `guide term "odd" (2 categories) is in no rule and not ignored, e.g. "Odd Show"`, "1 of 2 programmes", "1 warnings"} {
 		if !strings.Contains(out.String(), s) {
 			t.Errorf("check output lacks %q:\n%s", s, out.String())
 		}

@@ -182,7 +182,7 @@ shopping (0xa6, 2,339), detective/thriller (0x11, 2,214) and show (0x30,
    look at the unmapped terms.
 2. Edit the rule and run `xmltv-dvb-genres -check schedulesdirect-en.json
    guide.xml` with the edited file. It reports shadowed terms, unreachable
-   rules and guide terms that nothing covers.
+   rules and guide terms that nothing covers, with example titles.
 3. Look at real programmes that carry the terms you touched, not just at the
    counts. A rule that moves a thousand programmes to the right code can move
    fifty others to a wrong one.
