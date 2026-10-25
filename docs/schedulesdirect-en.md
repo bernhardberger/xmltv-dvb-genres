@@ -24,8 +24,8 @@ there, next to rugby and basketball.
 
 ## How rules are ordered
 
-The first matching rule decides the one code for the whole programme (the
-README explains why there is only one). Order is therefore the main design
+The first matching rule decides the one code for the whole programme ([tables.md](tables.md#one-code-per-programme)
+explains why there is only one). Order is therefore the main design
 tool. The table runs in these groups:
 
 1. Non-programmes: teleshopping, adult content.

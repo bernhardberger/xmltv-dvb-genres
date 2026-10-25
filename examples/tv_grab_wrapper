@@ -1,24 +1,33 @@
 #!/bin/sh
-# Example Tvheadend grabber wrapper that adds DVB genre codes.
+# Tvheadend grabber wrapper: runs tv_grab_zz_sdjson and adds DVB genres.
 #
-# Install it on Tvheadend's PATH under a tv_grab_* name, for example
-# /usr/local/bin/tv_grab_mysource, and point REAL at the actual grabber
-# (installed outside PATH or under another name). Tvheadend then runs this
-# wrapper as the grabber.
+# Install it as /usr/local/bin/tv_grab_zz_sdjson_genres, or under any other
+# tv_grab_* name on Tvheadend's PATH, and restart Tvheadend. It then appears as
+# "XMLTV: Schedules Direct JSON API with DVB genres" next to the plain
+# grabber. Give it the same Extra arguments as tv_grab_zz_sdjson, for example
+#   --config-file /var/lib/tvheadend/.xmltv/tv_grab_zz_sdjson.conf --days 7
+#
+# For another grabber, change REAL and DESCRIPTION.
 #
 # FILTER_ARGS passes options to the filter, for example
 # FILTER_ARGS="-format eit" on a Tvheadend build that handles the Category
-# Code XPath safely (see "Choosing a format" in the README).
+# Code XPath safely (see docs/tvheadend.md).
 #
 # The guide is never lost: without xmltv-dvb-genres, or if it fails, the
 # grabber output is passed through.
 
-REAL=${REAL:-/usr/local/libexec/tv_grab_mysource}
+REAL=${REAL:-/usr/bin/tv_grab_zz_sdjson}
+DESCRIPTION=${DESCRIPTION:-Schedules Direct JSON API with DVB genres}
 FILTER=${FILTER:-xmltv-dvb-genres}
 FILTER_ARGS=${FILTER_ARGS:-}
 
 case "$1" in
---description | --capabilities | --version | --configure)
+--description)
+	# Tvheadend names the module after this; keep it distinct from REAL's.
+	echo "$DESCRIPTION"
+	exit 0
+	;;
+--capabilities | --version | --configure)
 	exec "$REAL" "$@"
 	;;
 esac
